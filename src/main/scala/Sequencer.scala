@@ -1,24 +1,22 @@
 package com.ataraxer.patterns.akka
 
-import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.{ask, pipe}
-import akka.util.Timeout
-import akka.kernel.Bootable
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-
-
-case class Perform(list: List[Int])
-case class Process(x: Int)
-case class Result(x: Int)
+import AkkaApp._
 
 
 object Sequencer {
   def props(client: ActorRef) = Props(new Sequencer(client))
+  case class Perform(list: List[Int])
+  case class Process(x: Int)
+  case class Result(x: Int)
+  case class Done
 }
 
 class Sequencer(client: ActorRef) extends Actor {
+  import Sequencer._
+
   val processor = context.actorOf(Props[FakeProcessor], "processor")
 
   def handle(receiver: PartialFunction[Any, Unit]) =
@@ -36,7 +34,7 @@ class Sequencer(client: ActorRef) extends Actor {
     }
 
     case Perform(Nil) => {
-      client ! Done
+      client ! Shutdown
       println("Done!")
     }
   }
@@ -44,6 +42,8 @@ class Sequencer(client: ActorRef) extends Actor {
 
 
 class FakeProcessor extends Actor {
+  import Sequencer._
+
   def receive = {
     case Process(x) => {
       println("Done", x)
@@ -53,34 +53,11 @@ class FakeProcessor extends Actor {
 }
 
 
-class SequencerApp extends Bootable {
-  val system = ActorSystem("somesystem")
-
-  implicit val ec = system.dispatcher
-  implicit val timeout = Timeout(1.seconds)
-
-  def startup {
-    val worker = system.actorOf(Props(new Actor {
-      val sequencer = context.actorOf(Sequencer.props(self), "sequencer")
-      def receive = {
-        case Work => sequencer ! Perform(List(1, 2, 3, 4))
-        case Done => shutdown()
-      }
-    }))
-
-    println("Initialized")
-
-    worker ! Work
+object SequencerApp extends AkkaApp("sequencer-app") {
+  def run {
+    val sequencer = system.actorOf(Sequencer.props(worker), "sequencer")
+    sequencer ! Sequencer.Perform(List(1, 2, 3, 4))
   }
-
-  def shutdown {
-    system.shutdown()
-  }
-}
-
-
-object SequencerApp extends Application {
-  (new SequencerApp).startup()
 }
 
 

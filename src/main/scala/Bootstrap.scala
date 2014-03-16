@@ -1,18 +1,13 @@
 package com.ataraxer.patterns.akka
 
-import akka.actor.{Actor, ActorSystem, Props}
+import akka.actor.{Actor, Props}
 import akka.pattern.{ask, pipe}
-import akka.util.Timeout
-import akka.kernel.Bootable
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
+import AkkaApp._
 
 
 case class ReportStatus
 case class Print(msg: String)
-case class Work
-case class Done
 
 
 class Reporter extends Actor {
@@ -26,41 +21,21 @@ class Printer extends Actor {
   def receive = {
     case Print(msg) => {
       println(msg)
-      sender ! Done
+      sender ! Shutdown
     }
   }
 }
 
 
-class AkkaApp extends Bootable {
-  val system = ActorSystem("somesystem")
+object Bootstrap extends AkkaApp("bootstrap-app") {
   val reporter = system.actorOf(Props[Reporter], "reporter")
 
-  implicit val ec = system.dispatcher
-  implicit val timeout = Timeout(1.seconds)
-
-  def startup {
+  def run {
     val futureStatus = reporter ? ReportStatus
     val msg = for (status <- futureStatus.mapTo[String]) yield Print(status)
 
-    val worker = system.actorOf(Props(new Actor {
-      def receive = {
-        case Work => msg pipeTo context.actorOf(Props[Printer])
-        case Done => shutdown()
-      }
-    }))
-
-    worker ! Work
+    msg pipeTo system.actorOf(Props[Printer])
   }
-
-  def shutdown {
-    system.shutdown()
-  }
-}
-
-
-object Bootstrap extends Application {
-  (new AkkaApp).startup()
 }
 
 
