@@ -7,15 +7,15 @@ import AkkaApp._
 
 
 object Sequencer {
-  def props(client: ActorRef) = Props(new Sequencer(client))
   case class Perform(list: List[Int])
   case class Process(x: Int)
   case class Result(x: Int)
   case class Done
 }
 
-class Sequencer(client: ActorRef) extends Actor {
+class Sequencer extends Actor {
   import Sequencer._
+  import context._
 
   val processor = context.actorOf(Props[FakeProcessor], "processor")
 
@@ -24,7 +24,17 @@ class Sequencer(client: ActorRef) extends Actor {
       def receive = receiver
     }))
 
+  private var client: ActorRef = null
+
   def receive = {
+    case msg: Perform => {
+      client = sender
+      become(active)
+      self ! msg
+    }
+  }
+
+  def active: Receive = {
     case Perform(x :: xs) => {
       val handler = handle {
         case Done => self ! Perform(xs)
@@ -46,7 +56,7 @@ class FakeProcessor extends Actor {
 
   def receive = {
     case Process(x) => {
-      println("Done", x)
+      println("Processed " + x)
       sender ! Done
     }
   }
@@ -55,7 +65,7 @@ class FakeProcessor extends Actor {
 
 object SequencerApp extends AkkaApp("sequencer-app") {
   def run {
-    val sequencer = system.actorOf(Sequencer.props(worker), "sequencer")
+    val sequencer = system.actorOf(Props[Sequencer], "sequencer")
     sequencer ! Sequencer.Perform(List(1, 2, 3, 4))
   }
 }
