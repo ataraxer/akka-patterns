@@ -13,16 +13,11 @@ object Sequencer {
   case class Done
 }
 
-class Sequencer extends Actor {
+class Sequencer extends Actor with Spawner {
   import Sequencer._
   import context._
 
   val processor = context.actorOf(Props[FakeProcessor], "processor")
-
-  def handle(receiver: PartialFunction[Any, Unit]) =
-    context.actorOf(Props(new Actor {
-      def receive = receiver
-    }))
 
   private var client: ActorRef = null
 
