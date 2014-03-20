@@ -9,6 +9,9 @@ import org.apache.zookeeper.Watcher.Event.KeeperState._
 import org.apache.zookeeper.ZooDefs.Ids
 import org.apache.zookeeper.data.Stat
 
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+
 import AkkaApp._
 
 
@@ -30,6 +33,8 @@ object ZooKeeperProxy {
   case class GetData(path: String)
 
   case class SetData(path: String, data: String)
+
+  case class TimeOut
 }
 
 
@@ -40,6 +45,7 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
 
   private val watcher = new Watcher {
     override def process(event: WatchedEvent) {
+      println(event)
       event.getState match {
         case SyncConnected => self ! Connected
         case _ => unstashAll()
@@ -49,11 +55,18 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
 
   private val zk = new ZooKeeper(host, sessionTimeout, watcher)
 
+  context.system.scheduler.scheduleOnce(5 seconds, self, TimeOut)
+
 
   def receive = {
     case Connected => {
       unstashAll()
       context.become(active)
+    }
+    case TimeOut => {
+      println("Connection timed out!")
+      unstashAll()
+      context.become(dead)
     }
     case msg => stash
   }
@@ -82,12 +95,18 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
       sender ! Data(new String(data))
     }
   }
+
+
+  def dead: Receive = {
+    case _ => sender ! Shutdown
+  }
 }
 
 
 object ZooKeeperProxyApp extends AkkaApp("zk-proxy-app") {
   def run {
-    val zkProxy = system.actorOf(ZooKeeperProxy.props(worker, "localhost:2181"))
+    //val zkProxy = system.actorOf(ZooKeeperProxy.props(worker, "localhost:2181"))
+    val zkProxy = system.actorOf(ZooKeeperProxy.props(worker, "localhost:2182"))
     val path = "/a"
     val data = "foobar"
 
