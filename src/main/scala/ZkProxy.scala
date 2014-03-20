@@ -2,6 +2,7 @@ package com.ataraxer.patterns.akka
 
 import akka.actor.{Actor, ActorRef, Props, Stash}
 import akka.actor.Actor.Receive
+import akka.actor.ActorLogging
 import akka.pattern.{ask, pipe}
 
 import org.apache.zookeeper.{ZooKeeper, CreateMode, Watcher, WatchedEvent}
@@ -34,20 +35,32 @@ object ZooKeeperProxy {
 
   case class SetData(path: String, data: String)
 
-  case class TimeOut
+  case class Timeout
 }
 
 
 class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
-    extends Actor with Stash with Spawner
+    extends Actor with Stash with Spawner with ActorLogging
 {
   import ZooKeeperProxy._
 
   private val watcher = new Watcher {
     override def process(event: WatchedEvent) {
-      println(event)
+      log.info("Received ZK event: {}", event)
       event.getState match {
         case SyncConnected => self ! Connected
+        case AuthFailed => {
+          log.warning("ZK authentication failed!")
+          context.become(connecting)
+        }
+        case Disconnected => {
+          log.warning("ZK has been disconnected!")
+          context.become(connecting)
+        }
+        case Expired => {
+          log.warning("ZK session has expired!")
+          context.become(connecting)
+        }
         case _ => unstashAll()
       }
     }
@@ -55,16 +68,17 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
 
   private val zk = new ZooKeeper(host, sessionTimeout, watcher)
 
-  context.system.scheduler.scheduleOnce(5 seconds, self, TimeOut)
+  context.system.scheduler.scheduleOnce(5 seconds, self, Timeout)
 
+  def receive = connecting
 
-  def receive = {
+  def connecting: Receive = {
     case Connected => {
       unstashAll()
       context.become(active)
     }
-    case TimeOut => {
-      println("Connection timed out!")
+    case Timeout => {
+      log.warning("Connection timed out!")
       unstashAll()
       context.become(dead)
     }
@@ -105,8 +119,7 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
 
 object ZooKeeperProxyApp extends AkkaApp("zk-proxy-app") {
   def run {
-    //val zkProxy = system.actorOf(ZooKeeperProxy.props(worker, "localhost:2181"))
-    val zkProxy = system.actorOf(ZooKeeperProxy.props(worker, "localhost:2182"))
+    val zkProxy = system.actorOf(ZooKeeperProxy.props(worker, "localhost:2181"))
     val path = "/a"
     val data = "foobar"
 
