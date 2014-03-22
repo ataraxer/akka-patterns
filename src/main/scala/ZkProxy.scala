@@ -19,9 +19,12 @@ import AkkaApp._
 object ZooKeeperProxy {
   def props(client: ActorRef, host: String) = Props(new ZooKeeperProxy(client, host))
 
+  val ConnectionTimeout = 5 seconds
+
   /* ==== MESSAGES ==== */
   case class Close
   case class Connected
+
   case class Create(path: String, data: Option[String])
   case class CreateRecursive(path: String, data: Option[String])
 
@@ -36,10 +39,17 @@ object ZooKeeperProxy {
   case class SetData(path: String, data: String)
 
   case class Timeout
+
+  case class Ping(message: String)
+
+  /* ==== EXCEPTIONS ==== */
+  class ZkProxySessionExpired extends Exception
 }
 
 
-class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
+class ZooKeeperProxy(
+  client: ActorRef, host: String,
+  sessionTimeout: Int = 30.seconds.toMillis.toInt)
     extends Actor with Stash with Spawner with ActorLogging
 {
   import ZooKeeperProxy._
@@ -51,15 +61,15 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
         case SyncConnected => self ! Connected
         case AuthFailed => {
           log.warning("ZK authentication failed!")
-          context.become(connecting)
+          reconnect()
         }
         case Disconnected => {
           log.warning("ZK has been disconnected!")
-          context.become(connecting)
+          reconnect()
         }
         case Expired => {
           log.warning("ZK session has expired!")
-          context.become(connecting)
+          throw new ZkProxySessionExpired
         }
         case _ => unstashAll()
       }
@@ -67,10 +77,24 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
   }
 
   private val zk = new ZooKeeper(host, sessionTimeout, watcher)
+  connect()
 
-  context.system.scheduler.scheduleOnce(5 seconds, self, Timeout)
+
+  def connect() {
+    log.info("Connecting to ZK...")
+    context.become(connecting)
+    context.system.scheduler.scheduleOnce(ConnectionTimeout, self, Timeout)
+  }
+
+
+  def reconnect() {
+    log.info("Attempting to reconnect to ZK...")
+    connect()
+  }
+
 
   def receive = connecting
+
 
   def connecting: Receive = {
     case Connected => {
@@ -80,9 +104,10 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
     case Timeout => {
       log.warning("Connection timed out!")
       unstashAll()
-      context.become(dead)
+      log.info("Clearing out queued messages...")
+      reconnect()
     }
-    case msg => stash
+    case msg if active.isDefinedAt(msg) => stash
   }
 
 
@@ -108,6 +133,8 @@ class ZooKeeperProxy(client: ActorRef, host: String, sessionTimeout: Int = 1000)
       val data = zk.getData(path, false, null)
       sender ! Data(new String(data))
     }
+
+    case Ping(msg) => log.info("Ping: {}", msg)
   }
 
 
