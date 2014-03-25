@@ -9,9 +9,18 @@ import scala.util.Success
 import com.ataraxer.patterns.test.akka.UnitSpec
 import com.ataraxer.patterns.akka.futures.FutureInt
 
+import ExecutionContext.Implicits.global
+
+
+object FutureIntSpecGlobals {
+  val (x, y) = (9000, 42)
+  val futureX = FutureInt { x }
+  val futureY = FutureInt { y }
+}
+
 
 class FutureIntSpec extends UnitSpec {
-  import ExecutionContext.Implicits.global
+  import FutureIntSpecGlobals._
 
   "A FutureInt" should "be able to be instanciated from future" in {
     FutureInt(Future { 9000 }) shouldBe a [FutureInt]
@@ -22,13 +31,27 @@ class FutureIntSpec extends UnitSpec {
   }
 
   it should "be composable via + operator" in {
-    val (a, b) = (9000, 42)
-    val futureA = FutureInt { a }
-    val futureB = FutureInt { b }
-    val futureC = futureA + futureB
+    val futureZ = futureX + futureY
+    val result = Await.result(futureZ, 1 second)
+    result should be (x + y)
+  }
 
-    val result = Await.result(futureC, 1 second)
-    result should be (a + b)
+  it should "be composable via - operator" in {
+    val futureZ = futureX - futureY
+    val result = Await.result(futureZ, 1 second)
+    result should be (x - y)
+  }
+
+  it should "be composable via * operator" in {
+    val futureZ = futureX * futureY
+    val result = Await.result(futureZ, 1 second)
+    result should be (x * y)
+  }
+
+  it should "be composable via / operator" in {
+    val futureZ = futureX / futureY
+    val result = Await.result(futureZ, 1 second)
+    result should be (x / y)
   }
 }
 

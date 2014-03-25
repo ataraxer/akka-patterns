@@ -19,9 +19,14 @@ object FutureInt {
 }
 
 class FutureInt(val future: Future[Int])(implicit ex: ExecutionContext) {
-  def +(that: FutureInt) =
+  private def binOp(op: (Int, Int) => Int)(that: FutureInt) =
     for (a <- future; b <- that)
-      yield a + b
+      yield op(a, b)
+
+  def + = binOp { _ + _ } _
+  def - = binOp { _ - _ } _
+  def * = binOp { _ * _ } _
+  def / = binOp { _ / _ } _
 }
 
 
