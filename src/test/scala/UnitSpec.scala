@@ -3,8 +3,8 @@ package com.ataraxer.patterns.test.akka
 import org.scalatest._
 
 
-abstract class UnitSpec
-  extends FlatSpec
+trait UnitSpec
+  extends FlatSpecLike
   with Matchers
   with OptionValues
   with Inside
