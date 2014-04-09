@@ -1,12 +1,6 @@
 package com.ataraxer.patterns.akka
 
 import akka.actor.{Actor, ActorSystem, ActorRefFactory, ActorRef, Props}
-import akka.actor.Actor.Receive
-import akka.pattern.{ask, pipe}
-
-import scala.reflect.ClassTag
-
-import AkkaApp._
 
 
 object Collector {
@@ -19,7 +13,9 @@ object Collector {
 trait CollectorSpawner {
   import Collector._
 
-  def collect(objects: Any*)(implicit context: ActorRefFactory) =
+  val context: ActorRefFactory
+
+  def collect(objects: Any*) =
     context.actorOf(Props(
       new Collector {
         def expected(msg: Any) = objects contains msg
@@ -27,8 +23,7 @@ trait CollectorSpawner {
     ))
 
 
-  def collectPF(extractor: Extractor)
-               (implicit context: ActorRefFactory) =
+  def collectPF(extractor: Extractor) =
     context.actorOf(Props(
       new Collector {
         def expected(msg: Any) = extractor.isDefinedAt(msg)
@@ -38,7 +33,7 @@ trait CollectorSpawner {
 
 
   def collectCount(expectedSize: Int)(objects: Any*)
-                  (implicit client: ActorRef, context: ActorRefFactory) =
+                  (implicit client: ActorRef) =
     context.actorOf(Props(
       new Collector(client = Some(client), expectedSize = Some(expectedSize)) {
         def expected(msg: Any) = objects contains msg
@@ -47,7 +42,7 @@ trait CollectorSpawner {
 
 
   def collectCountPF(expectedSize: Int)(extractor: Extractor)
-                    (implicit client: ActorRef, context: ActorRefFactory) =
+                    (implicit client: ActorRef) =
     context.actorOf(Props(
       new Collector(client = Some(client), expectedSize = Some(expectedSize)) {
         def expected(msg: Any) = extractor.isDefinedAt(msg)
@@ -59,7 +54,7 @@ trait CollectorSpawner {
 
 abstract class Collector(expectedSize: Option[Int] = None,
                          client: Option[ActorRef]  = None)
-    extends Actor with Spawner
+    extends Actor
 {
   import Collector._
 

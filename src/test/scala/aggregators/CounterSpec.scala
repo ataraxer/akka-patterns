@@ -2,7 +2,7 @@ package com.ataraxer.patterns.test.akka
 
 import org.scalatest._
 
-import akka.testkit.{TestKit, TestActorRef, ImplicitSender}
+import akka.testkit.{TestKit, ImplicitSender}
 import akka.actor.{ActorSystem, ActorRef}
 
 import com.ataraxer.patterns.akka._
@@ -22,9 +22,9 @@ object CounterSpec {
 
   def generateMessages =
     Random.shuffle(
-      List.fill(5)(Foo) ++
-      List.fill(10)(Bar) ++
-      List.fill(15)(Baz)
+      List.fill(fooCount)(Foo) ++
+      List.fill(barCount)(Bar) ++
+      List.fill(bazCount)(Baz)
     )
 }
 
@@ -37,8 +37,6 @@ class CounterSpec(_system: ActorSystem)
 {
   import Counter._
   import CounterSpec._
-
-  val counter = TestActorRef[Counter]
 
   def this() = this(ActorSystem("counter-spec"))
 
@@ -100,6 +98,7 @@ class CounterSpec(_system: ActorSystem)
 
     expectMsg(Done)
   }
+
 
   it should "count distinct number of expected messages" in {
     val counter = countDistinct(Foo, Bar)

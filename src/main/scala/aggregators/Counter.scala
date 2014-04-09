@@ -1,12 +1,6 @@
 package com.ataraxer.patterns.akka
 
 import akka.actor.{Actor, ActorSystem, ActorRefFactory, ActorRef, Props}
-import akka.actor.Actor.Receive
-import akka.pattern.{ask, pipe}
-
-import scala.reflect.ClassTag
-
-import AkkaApp._
 
 
 object Counter {
@@ -83,7 +77,7 @@ trait CounterSpawner {
 abstract class Counter(distinct: Boolean = false,
                        expectedSize: Option[Int] = None,
                        client: Option[ActorRef] = None)
-    extends Actor with Spawner
+    extends Actor
 {
   import Counter._
 

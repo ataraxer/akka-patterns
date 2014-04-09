@@ -2,7 +2,7 @@ package com.ataraxer.patterns.test.akka
 
 import org.scalatest._
 
-import akka.testkit.{TestKit, TestActorRef, ImplicitSender}
+import akka.testkit.{TestKit, ImplicitSender}
 import akka.actor.{ActorSystem, ActorRef}
 
 import com.ataraxer.patterns.akka._
@@ -23,9 +23,9 @@ object CollectorSpec {
 
   def generateMessages =
     Random.shuffle(
-      List.fill(5)(Foo) ++
-      List.fill(10)(Bar) ++
-      List.fill(15)(Baz)
+      List.fill(fooCount)(Foo) ++
+      List.fill(barCount)(Bar) ++
+      List.fill(bazCount)(Baz)
     )
 }
 
@@ -39,7 +39,7 @@ class CollectorSpec(_system: ActorSystem)
   import Collector._
   import CollectorSpec._
 
-  val collector = TestActorRef[Collector]
+  val context = _system
 
   def this() = this(ActorSystem("collector-spec"))
 
@@ -115,5 +115,6 @@ class CollectorSpec(_system: ActorSystem)
     }
   }
 }
+
 
 // vim: set ts=2 sw=2 et:
