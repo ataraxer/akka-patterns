@@ -8,7 +8,8 @@ resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/release
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.0",
-  "com.typesafe.akka" %% "akka-kernel" % "2.3.0"
+  "com.typesafe.akka" %% "akka-kernel" % "2.3.0",
+  "com.typesafe.akka" %% "akka-testkit" % "2.3.0"
 )
 
 libraryDependencies += "org.apache.zookeeper" % "zookeeper" % "3.3.6" excludeAll (

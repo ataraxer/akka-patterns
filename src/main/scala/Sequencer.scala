@@ -39,7 +39,7 @@ class Sequencer extends Actor with Spawner {
     }
 
     case Perform(Nil) => {
-      client ! Shutdown
+      client ! Done
       println("Done!")
     }
   }

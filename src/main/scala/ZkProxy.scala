@@ -56,7 +56,6 @@ class ZooKeeperProxy(
 
   private val watcher = new Watcher {
     override def process(event: WatchedEvent) {
-      log.info("Received ZK event: {}", event)
       event.getState match {
         case SyncConnected => self ! Connected
         case AuthFailed => {
@@ -69,15 +68,21 @@ class ZooKeeperProxy(
         }
         case Expired => {
           log.warning("ZK session has expired!")
-          throw new ZkProxySessionExpired
+          startNewSession()
         }
-        case _ => unstashAll()
+        case _ => log.warning("Unhandled ZK event: {}", event)
       }
     }
   }
 
-  private val zk = new ZooKeeper(host, sessionTimeout, watcher)
-  connect()
+  private var zk: ZooKeeper = null
+  startNewSession()
+
+  def startNewSession() {
+    zk = new ZooKeeper(host, sessionTimeout, watcher)
+    log.info("Starting new ZK session...")
+    connect()
+  }
 
 
   def connect() {
@@ -103,8 +108,6 @@ class ZooKeeperProxy(
     }
     case Timeout => {
       log.warning("Connection timed out!")
-      unstashAll()
-      log.info("Clearing out queued messages...")
       reconnect()
     }
     case msg if active.isDefinedAt(msg) => stash
