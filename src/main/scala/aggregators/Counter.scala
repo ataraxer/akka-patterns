@@ -1,6 +1,6 @@
 package com.ataraxer.patterns.akka
 
-import akka.actor.{Actor, ActorSystem, ActorRef, Props}
+import akka.actor.{Actor, ActorSystem, ActorRefFactory, ActorRef, Props}
 import akka.actor.Actor.Receive
 import akka.pattern.{ask, pipe}
 
@@ -10,72 +10,103 @@ import AkkaApp._
 
 
 object Counter {
+  type CountFilter = PartialFunction[Any, Boolean]
+
   case class Done
+  case class Count(result: Int)
+  case class DistinctCount(result: Map[Any, Int])
+
   case class Flush
-  case class Count(result: Map[Any, Int])
 }
 
 
 trait CounterSpawner {
-  def countPF(expect: Receive)(implicit context: ActorSystem) = {
-    context.actorOf(Props(
-      new Counter { def expected(msg: Any) = expect.isDefinedAt(msg) }
-    ))
+  import Counter._
+
+  val defaultPF: CountFilter = {
+    case _ => false
   }
 
-  def count(classes: Class[_]*)(implicit context: ActorSystem) = {
+  def count(objects: Any*)(implicit context: ActorRefFactory) =
     context.actorOf(Props(
       new Counter {
-        def expected(msg: Any) = classes contains msg.getClass
+        def expected(msg: Any) = objects contains msg
       }
     ))
-  }
 
-  def count[A <: Any : ClassTag] = {
-    val clazz = implicitly[ClassTag[A]].runtimeClass
-    new CounterBuilder {
-      def expected(msg: Any) = {
-        // TODO: support primitives like int and float
-        clazz.isInstance(msg) || clazz == msg.getClass
-      }
-    }
-  }
 
-  abstract class CounterBuilder {
-    def expected(msg: Any): Boolean
-
-    def +(that: CounterBuilder) = {
-      val me = this
-      new CounterBuilder {
-        def expected(msg: Any) = {
-          me.expected(msg) || that.expected(msg)
-        }
-      }
-    }
-  }
-
-  implicit def builderToActor(builder: CounterBuilder)
-                             (implicit system: ActorSystem) =
-    system.actorOf(Props(
+  def countPF(expect: CountFilter)
+             (implicit context: ActorRefFactory) =
+    context.actorOf(Props(
       new Counter {
-        def expected(msg: Any) = builder.expected(msg)
+        def expected(msg: Any) = (expect orElse defaultPF)(msg)
+      }
+    ))
+
+
+  def expectCount(expectedSize: Int)(objects: Any*)
+                 (implicit client: ActorRef, context: ActorRefFactory) =
+    context.actorOf(Props(
+      new Counter(client = Some(client), expectedSize = Some(expectedSize)) {
+        def expected(msg: Any) = objects contains msg
+      }
+    ))
+
+
+  def expectCountPF(expectedSize: Int)(expect: CountFilter)
+                   (implicit client: ActorRef, context: ActorRefFactory) =
+    context.actorOf(Props(
+      new Counter(client = Some(client), expectedSize = Some(expectedSize)) {
+        def expected(msg: Any) = (expect orElse defaultPF)(msg)
+      }
+    ))
+
+
+  def countDistinct(objects: Any*)(implicit context: ActorRefFactory) =
+    context.actorOf(Props(
+      new Counter(distinct = true) {
+        def expected(msg: Any) = objects contains msg
+      }
+    ))
+
+
+  def countDistinctPF(expect: CountFilter)
+                     (implicit context: ActorRefFactory) =
+    context.actorOf(Props(
+      new Counter(distinct = true) {
+        def expected(msg: Any) = (expect orElse defaultPF)(msg)
       }
     ))
 }
 
 
-abstract class Counter extends Actor with Spawner {
+abstract class Counter(distinct: Boolean = false,
+                       expectedSize: Option[Int] = None,
+                       client: Option[ActorRef] = None)
+    extends Actor with Spawner
+{
   import Counter._
 
   private var result = Map.empty[Any, Int]
 
   def expected(msg: Any): Boolean
 
+  def isDone = expectedSize match {
+    case Some(size) => result.map(_._2).sum == size
+    case None => false
+  }
+
   def receive = {
-    case Flush => sender ! Count(result.toMap)
+    case Flush => {
+      val response =
+        if (distinct) DistinctCount(result.toMap)
+                 else Count(result.map(_._2).sum)
+      sender ! response
+    }
 
     case msg if expected(msg) => {
       result += msg -> (result.getOrElse(msg, 0) + 1)
+      if (isDone) client map { _ ! Done }
     }
   }
 }

@@ -15,6 +15,17 @@ object CounterSpec {
   case object Foo
   case object Bar
   case object Baz
+
+  val fooCount = 5
+  val barCount = 10
+  val bazCount = 15
+
+  def generateMessages =
+    Random.shuffle(
+      List.fill(5)(Foo) ++
+      List.fill(10)(Bar) ++
+      List.fill(15)(Baz)
+    )
 }
 
 
@@ -32,47 +43,101 @@ class CounterSpec(_system: ActorSystem)
   def this() = this(ActorSystem("counter-spec"))
 
   "A Counter" should "count expected messages" in {
-    val counterA = countPF {
-      case Foo =>
-      case Bar =>
+    val counter = count(Foo, Bar)
+    generateMessages foreach { counter ! _ }
+
+    counter ! Flush
+
+    expectMsgPF(1.second) {
+      case Count(count) =>
+        count should be (fooCount + barCount)
     }
-    val counterB = count(Foo.getClass, Bar.getClass)
+  }
 
-    val messages = Random.shuffle(
-      List.fill(5)(Foo) ++
-      List.fill(10)(Bar) ++
-      List.fill(15)(Baz)
-    )
 
-    messages foreach { counterA ! _ }
-    messages foreach { counterB ! _ }
+  it should "count expected messages defined by partial function" in {
+    val counter = countPF {
+      case Foo => true
+      case Bar => true
+      case List(Foo, Bar | Foo) => true
+    }
 
-    counterA ! Flush
+    generateMessages foreach { counter ! _ }
+    counter ! List(Foo, Bar)
+    counter ! List(Bar, Foo)
+    counter ! List(Bar, Bar)
+    counter ! List(Foo, Foo)
+
+    counter ! Flush
+
+    expectMsgPF(1.second) {
+      case Count(count) =>
+        count should be (fooCount + barCount + 2)
+    }
+  }
+
+
+  it should "alert client on expected count of expected messages" in {
+    val counter = expectCount(fooCount + barCount)(Foo, Bar)
+    generateMessages foreach { counter ! _ }
+
+    expectMsg(Done)
+  }
+
+
+  it should "alert client on expected count of messages defined by PF" in {
+    val counter = expectCountPF(fooCount + barCount + 2) {
+      case Foo => true
+      case Bar => true
+      case List(Foo, Bar | Foo) => true
+    }
+
+    generateMessages foreach { counter ! _ }
+    counter ! List(Foo, Bar)
+    counter ! List(Bar, Foo)
+    counter ! List(Bar, Bar)
+    counter ! List(Foo, Foo)
+
+    expectMsg(Done)
+  }
+
+  it should "count distinct number of expected messages" in {
+    val counter = countDistinct(Foo, Bar)
+    generateMessages foreach { counter ! _ }
+
+    counter ! Flush
 
     expectMsgPF(1 seconds) {
-      case Count(result) =>
-        result should be { Map(Foo -> 5, Bar -> 10) }
+      case DistinctCount(result) =>
+        result should be { Map(Foo -> fooCount, Bar -> barCount) }
+    }
+  }
+
+
+  it should "count distinct number of expected messages defined by PF" in {
+    val counter = countDistinctPF {
+      case Foo => true
+      case Bar => true
+      case List(Foo, Bar | Foo) => true
     }
 
-    counterB ! Flush
+    generateMessages foreach { counter ! _ }
+    counter ! List(Foo, Bar)
+    counter ! List(Bar, Foo)
+    counter ! List(Bar, Bar)
+    counter ! List(Foo, Foo)
+
+    counter ! Flush
 
     expectMsgPF(1 seconds) {
-      case Count(result) =>
-        result should be { Map(Foo -> 5, Bar -> 10) }
+      case DistinctCount(result) =>
+        result should be { Map(
+          Foo -> fooCount,
+          Bar -> barCount,
+          List(Foo, Foo) -> 1,
+          List(Foo, Bar) -> 1
+        )}
     }
-
-    val counterC: ActorRef = count[String] + count[List[Int]]
-    counterC ! "foo"
-    counterC ! "foo"
-    counterC ! List(1, 2, 3)
-    counterC ! "bar"
-    counterC ! "foo"
-    counterC ! Flush
-
-    expectMsg(Count(
-      Map("foo" -> 3, "bar" -> 1, List(1, 2, 3) -> 1)
-    ))
-
   }
 }
 
