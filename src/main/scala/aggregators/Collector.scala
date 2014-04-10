@@ -6,7 +6,8 @@ import akka.actor.{Actor, ActorSystem, ActorRefFactory, ActorRef, Props}
 object Collector {
   type Extractor = PartialFunction[Any, Any]
   case class Collection(result: Seq[Any])
-  case class Flush
+  case object Flush
+  case object Peak
 }
 
 
@@ -69,11 +70,19 @@ abstract class Collector(expectedSize: Option[Int] = None,
   }
 
   def receive = {
-    case Flush => sender ! Collection(result)
+    case Flush => {
+      sender ! Collection(result)
+      result = Seq.empty[Any]
+    }
+
+    case Peak => sender ! Collection(result)
 
     case msg if expected(msg) => {
       result :+= extract(msg)
-      if (isDone) client map { _ ! Collection(result) }
+      if (isDone) {
+        client map { _ ! Collection(result) }
+        context.stop(self)
+      }
     }
   }
 }

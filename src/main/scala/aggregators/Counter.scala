@@ -1,16 +1,18 @@
 package com.ataraxer.patterns.akka
 
 import akka.actor.{Actor, ActorSystem, ActorRefFactory, ActorRef, Props}
+import scala.collection.mutable
 
 
 object Counter {
   type CountFilter = PartialFunction[Any, Boolean]
 
-  case class Done
+  case object Done
   case class Count(result: Int)
   case class DistinctCount(result: Map[Any, Int])
 
-  case class Flush
+  case object Flush
+  case object Peak
 }
 
 
@@ -81,7 +83,7 @@ abstract class Counter(distinct: Boolean = false,
 {
   import Counter._
 
-  private var result = Map.empty[Any, Int]
+  private val result = mutable.Map.empty[Any, Int].withDefaultValue(0)
 
   def expected(msg: Any): Boolean
 
@@ -90,17 +92,24 @@ abstract class Counter(distinct: Boolean = false,
     case None => false
   }
 
+  private def response =
+    if (distinct) DistinctCount(result.toMap)
+             else Count(result.map(_._2).sum)
+
   def receive = {
     case Flush => {
-      val response =
-        if (distinct) DistinctCount(result.toMap)
-                 else Count(result.map(_._2).sum)
       sender ! response
+      result.clear()
     }
 
+    case Peak => sender ! response
+
     case msg if expected(msg) => {
-      result += msg -> (result.getOrElse(msg, 0) + 1)
-      if (isDone) client map { _ ! Done }
+      result(msg) += 1
+      if (isDone) {
+        client map { _ ! Done }
+        context.stop(self)
+      }
     }
   }
 }
