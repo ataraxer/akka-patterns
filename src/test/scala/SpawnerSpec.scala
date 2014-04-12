@@ -12,9 +12,9 @@ import scala.concurrent.duration._
 
 
 object SpawnerSpec {
-  case class Work
-  case class Ping
-  case class Done
+  case object Work
+  case object Ping
+  case object Done
 
   class SpawnerActor extends Actor with Spawner {
     val echoer = spawn(new Actor {

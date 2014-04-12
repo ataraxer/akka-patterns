@@ -9,9 +9,10 @@ object AkkaPattersBuild extends Build {
 
   lazy val commonSettings = Seq(
     scalacOptions ++= Seq(
-      "-deprecation",
       "-g:vars",
+      "-deprecation",
       "-unchecked",
+      "-feature",
       "-Xlint",
       "-Xfatal-warnings"
     ),

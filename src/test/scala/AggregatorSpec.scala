@@ -28,7 +28,7 @@ class AggregatorSpec(_system: ActorSystem)
 
   "An Aggregator" should "perform multiple actions and aggregate result" in {
     aggregator ! Aggregator.PerformList(input)
-    expectMsgPF(3 seconds) {
+    expectMsgPF(3.seconds) {
       case Aggregator.ResultList(output) => {
         output should contain allOf (2, 4, 6)
       }

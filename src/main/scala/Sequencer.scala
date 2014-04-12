@@ -10,7 +10,7 @@ object Sequencer {
   case class Perform(list: List[Int])
   case class Process(x: Int)
   case class Result(x: Int)
-  case class Done
+  case object Done
 }
 
 class Sequencer extends Actor with Spawner {
@@ -59,7 +59,7 @@ class FakeProcessor extends Actor {
 
 
 object SequencerApp extends AkkaApp("sequencer-app") {
-  def run {
+  def run() {
     val sequencer = system.actorOf(Props[Sequencer], "sequencer")
     sequencer ! Sequencer.Perform(List(1, 2, 3, 4))
   }

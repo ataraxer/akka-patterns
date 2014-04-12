@@ -7,8 +7,8 @@ import scala.concurrent.duration._
 
 
 object AkkaApp {
-  case class Startup
-  case class Shutdown
+  case object Startup
+  case object Shutdown
 }
 
 abstract class AkkaApp(appName: String) {
@@ -19,8 +19,8 @@ abstract class AkkaApp(appName: String) {
   implicit val ec = system.dispatcher
   implicit val timeout = Timeout(1.seconds)
 
-  def run: Unit
-  def stop = worker ! Shutdown
+  def run(): Unit
+  def stop() = worker ! Shutdown
 
   protected implicit val worker = system.actorOf(
     Props(new Actor {

@@ -106,7 +106,7 @@ class CounterSpec(_system: ActorSystem)
 
     counter ! Flush
 
-    expectMsgPF(1 seconds) {
+    expectMsgPF(1.seconds) {
       case DistinctCount(result) =>
         result should be { Map(Foo -> fooCount, Bar -> barCount) }
     }
@@ -128,7 +128,7 @@ class CounterSpec(_system: ActorSystem)
 
     counter ! Flush
 
-    expectMsgPF(1 seconds) {
+    expectMsgPF(1.seconds) {
       case DistinctCount(result) =>
         result should be { Map(
           Foo -> fooCount,

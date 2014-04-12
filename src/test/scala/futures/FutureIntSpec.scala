@@ -32,25 +32,25 @@ class FutureIntSpec extends UnitSpec {
 
   it should "be composable via + operator" in {
     val futureZ = futureX + futureY
-    val result = Await.result(futureZ, 1 second)
+    val result = Await.result(futureZ, 1.second)
     result should be (x + y)
   }
 
   it should "be composable via - operator" in {
     val futureZ = futureX - futureY
-    val result = Await.result(futureZ, 1 second)
+    val result = Await.result(futureZ, 1.second)
     result should be (x - y)
   }
 
   it should "be composable via * operator" in {
     val futureZ = futureX * futureY
-    val result = Await.result(futureZ, 1 second)
+    val result = Await.result(futureZ, 1.second)
     result should be (x * y)
   }
 
   it should "be composable via / operator" in {
     val futureZ = futureX / futureY
-    val result = Await.result(futureZ, 1 second)
+    val result = Await.result(futureZ, 1.second)
     result should be (x / y)
   }
 }

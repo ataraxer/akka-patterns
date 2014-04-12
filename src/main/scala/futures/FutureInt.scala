@@ -3,6 +3,8 @@ package com.ataraxer.patterns.akka.futures
 import scala.concurrent.{ Future, Await, ExecutionContext }
 import scala.concurrent.duration._
 
+import scala.language.implicitConversions
+
 
 object FutureInt {
   implicit def futureToFutureInt(future: Future[Int])(implicit ec: ExecutionContext): FutureInt =
@@ -30,7 +32,7 @@ class FutureInt(val future: Future[Int])(implicit ex: ExecutionContext) {
 }
 
 
-object FutureIntApp extends Application {
+object FutureIntApp extends App {
   import FutureInt._
 
   implicit val ex: ExecutionContext = ExecutionContext.global
@@ -45,7 +47,7 @@ object FutureIntApp extends Application {
 
   futureC.onComplete(println)
 
-  val result = Await.result(futureC, 1 second)
+  val result = Await.result(futureC, 1.second)
   println(result)
 }
 

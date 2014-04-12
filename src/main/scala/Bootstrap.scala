@@ -6,7 +6,7 @@ import akka.pattern.{ask, pipe}
 import AkkaApp._
 
 
-case class ReportStatus
+case object ReportStatus
 case class Print(msg: String)
 
 
@@ -30,7 +30,7 @@ class Printer extends Actor {
 object Bootstrap extends AkkaApp("bootstrap-app") {
   val reporter = system.actorOf(Props[Reporter], "reporter")
 
-  def run {
+  def run() {
     val futureStatus = reporter ? ReportStatus
     val msg = for (status <- futureStatus.mapTo[String]) yield Print(status)
 

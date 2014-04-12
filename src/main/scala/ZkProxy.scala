@@ -19,11 +19,11 @@ import AkkaApp._
 object ZooKeeperProxy {
   def props(client: ActorRef, host: String) = Props(new ZooKeeperProxy(client, host))
 
-  val ConnectionTimeout = 5 seconds
+  val ConnectionTimeout = 5.seconds
 
   /* ==== MESSAGES ==== */
-  case class Close
-  case class Connected
+  case object Close
+  case object Connected
 
   case class Create(path: String, data: Option[String])
   case class CreateRecursive(path: String, data: Option[String])
@@ -38,7 +38,7 @@ object ZooKeeperProxy {
 
   case class SetData(path: String, data: String)
 
-  case class Timeout
+  case object Timeout
 
   case class Ping(message: String)
 

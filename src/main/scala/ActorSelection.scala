@@ -10,11 +10,11 @@ import AkkaApp._
 
 object ActorSelection extends AkkaApp("actor-selection-app") {
 
-  case class UselessMessage
+  case object UselessMessage
 
   var reported = 0
 
-  def isDone {
+  def isDone() {
     if (reported == 6) {
       worker ! Shutdown
     }
