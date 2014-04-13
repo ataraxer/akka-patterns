@@ -138,6 +138,41 @@ class CounterSpec(_system: ActorSystem)
         )}
     }
   }
+
+
+  it should "return collected count on Peak message" in {
+    val counter = count(Foo, Bar)
+    generateMessages foreach { counter ! _ }
+
+    counter ! Peak
+
+    val originalResult =
+      expectMsgPF(1.second) {
+        case Count(result) => result
+      }
+
+    counter ! Peak
+
+    expectMsg(Count(originalResult))
+  }
+
+
+  it should "return collected count and reset it's state " +
+            "on Peak message" in
+  {
+    val counter = count(Foo, Bar)
+    generateMessages foreach { counter ! _ }
+
+    counter ! Flush
+
+    expectMsgPF(1.second) {
+      case _: Count =>
+    }
+
+    counter ! Peak
+
+    expectMsg(Count(0))
+  }
 }
 
 // vim: set ts=2 sw=2 et:

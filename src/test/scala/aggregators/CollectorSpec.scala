@@ -96,7 +96,8 @@ class CollectorSpec(_system: ActorSystem)
 
 
   it should "collect extracted by PF values, " +
-            "untill required count is reached" in {
+            "untill required count is reached" in
+  {
     val collector = collectCountPF(fooCount + barCount + 1) {
       case Foo => Bar
       case Bar => Foo
@@ -113,6 +114,39 @@ class CollectorSpec(_system: ActorSystem)
         result.count(_ == Bar) should be (fooCount)
       }
     }
+  }
+
+
+  it should "return collected items on Peak message" in {
+    val collector = collect(Foo, Bar)
+    generateMessages foreach { collector ! _ }
+
+    collector ! Peak
+
+    val originalResult =
+      expectMsgPF(1.second) {
+        case Collection(result) => result
+      }
+
+    collector ! Peak
+
+    expectMsg(Collection(originalResult))
+  }
+
+
+  it should "return collected items and reset it's state on Flush message" in {
+    val collector = collect(Foo, Bar)
+    generateMessages foreach { collector ! _ }
+
+    collector ! Flush
+
+    expectMsgPF(1.second) {
+      case _: Collection =>
+    }
+
+    collector ! Peak
+
+    expectMsg(Collection(Nil))
   }
 }
 
