@@ -35,7 +35,6 @@ class Aggregator extends Actor with Spawner {
         case Result(x) => {
           result +:= x
           if (result.size == xs.size) {
-            println(result)
             client ! ResultList(result)
           }
         }
