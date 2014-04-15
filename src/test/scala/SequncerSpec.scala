@@ -3,13 +3,26 @@ package com.ataraxer.patterns.test.akka
 import org.scalatest._
 
 import akka.testkit.{TestKit, TestActorRef, ImplicitSender}
-import akka.actor.{ActorSystem}
+import akka.actor.{Actor, ActorRef, ActorSystem}
 
 import com.ataraxer.patterns.akka._
 
 
 object SequencerSpec {
-  val printSeq = List(1, 2, 3, 4)
+  class Item
+  case object First extends Item
+  case object Second extends Item
+  case object Last extends Item
+  val testSequence = List(First, Second, Last)
+
+  class Echoer(client: ActorRef) extends Actor {
+    def receive = {
+      case msg => {
+        client ! msg
+        sender ! Sequencer.Done
+      }
+    }
+  }
 }
 
 
@@ -20,14 +33,19 @@ class SequencerSpec(_system: ActorSystem)
 {
   import SequencerSpec._
 
-  val sequencer = TestActorRef[Sequencer]
+  val echoer = TestActorRef(new Echoer(testActor))
+  val sequencer = TestActorRef(new Sequencer(testActor, echoer))
 
   def this() = this(ActorSystem("sequencer-spec"))
 
   "A Sequencer" should "perform actions sequntially" in {
-    sequencer ! Sequencer.Perform(printSeq)
+    sequencer ! Sequencer.Perform(testSequence)
+    expectMsg(First)
+    expectMsg(Second)
+    expectMsg(Last)
     expectMsg(Sequencer.Done)
   }
 }
+
 
 // vim: set ts=2 sw=2 et:

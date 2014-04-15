@@ -1,67 +1,38 @@
 package com.ataraxer.patterns.akka
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorRef, ActorLogging, Props, Terminated}
 import akka.pattern.{ask, pipe}
 
 import AkkaApp._
 
 
 object Sequencer {
-  case class Perform(list: List[Int])
-  case class Process(x: Int)
-  case class Result(x: Int)
+  case class Perform[T](list: List[T])
   case object Done
 }
 
-class Sequencer extends Actor with Spawner {
+class Sequencer(client: ActorRef, processor: ActorRef)
+    extends Actor
+    with Spawner
+{
   import Sequencer._
-  import context._
 
-  val processor = context.actorOf(Props[FakeProcessor], "processor")
-
-  private var client: ActorRef = null
+  context.watch(client)
 
   def receive = {
-    case msg: Perform => {
-      client = sender
-      become(active)
-      self ! msg
-    }
-  }
-
-  def active: Receive = {
     case Perform(x :: xs) => {
       val handler = handle {
         case Done => self ! Perform(xs)
       }
 
-      processor.tell(Process(x), handler)
+      processor.tell(x, handler)
     }
 
     case Perform(Nil) => {
       client ! Done
-      println("Done!")
     }
-  }
-}
 
-
-class FakeProcessor extends Actor {
-  import Sequencer._
-
-  def receive = {
-    case Process(x) => {
-      println("Processed " + x)
-      sender ! Done
-    }
-  }
-}
-
-
-object SequencerApp extends AkkaApp("sequencer-app") {
-  def run() {
-    val sequencer = system.actorOf(Props[Sequencer], "sequencer")
-    sequencer ! Sequencer.Perform(List(1, 2, 3, 4))
+    case Terminated(_) => context.stop(self)
   }
 }
 
