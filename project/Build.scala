@@ -26,6 +26,7 @@ object AkkaPattersBuild extends Build {
       "com.typesafe.akka" %% "akka-actor"   % akkaVersion,
       "com.typesafe.akka" %% "akka-kernel"  % akkaVersion,
       "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
+      "com.typesafe.akka" %% "akka-slf4j"   % akkaVersion,
       // ScalaTest
       "org.scalatest"     %% "scalatest"    % scalatestVersion  % "test",
       // ZooKeeper
@@ -33,8 +34,18 @@ object AkkaPattersBuild extends Build {
         ExclusionRule(organization = "com.sun.jdmk"),
         ExclusionRule(organization = "com.sun.jmx"),
         ExclusionRule(organization = "javax.jms")
-      )
-    )
+      ),
+      // Kafka
+      "org.apache.kafka" %% "kafka" % "0.8.1",
+      "log4j" % "log4j" % "1.2.15" excludeAll (
+        ExclusionRule(organization = "com.sun.jdmk"),
+        ExclusionRule(organization = "com.sun.jmx"),
+        ExclusionRule(organization = "javax.jms")
+      ),
+      "org.slf4j" % "slf4j-log4j12" % "1.7.5" exclude("org.slf4j", "slf4j-simple")
+    ),
+
+    parallelExecution := false
   )
 
   lazy val buildSettings = Defaults.defaultSettings ++ Seq(
