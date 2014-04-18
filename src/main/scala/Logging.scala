@@ -13,29 +13,33 @@ object LoggingApp extends AkkaApp("logging-app") {
 
   def time = System.currentTimeMillis()
 
-  class GoodLogger extends Actor with ActorLogging {
-    var start: Long = time
+  trait TimedActor extends Actor {
+    val start: Long = time
 
     def receive = {
+      case Done     =>
+        println("%s done in %s".format(self.path.name, time - start))
+    }
+  }
+
+
+  class GoodLogger extends Actor with ActorLogging with TimedActor {
+    override def receive = super.receive orElse {
       case Log(msg) => log.info(msg)
-      case Done     =>
-        println("Good done in %s".format(time - start))
     }
   }
 
-  class BadLogger extends Actor with Logging {
-    var start: Long = time
 
-    def receive = {
+  class BadLogger extends Actor with Logging with TimedActor {
+    override def receive = super.receive orElse {
       case Log(msg) => info(msg)
-      case Done     =>
-        println("Bad done in %s".format(time - start))
     }
   }
+
 
   def run {
-    val good = system.actorOf(Props[GoodLogger], "actor-a")
-    val bad  = system.actorOf(Props[BadLogger], "actor-b")
+    val good = system.actorOf(Props[GoodLogger], "good-logger")
+    val bad  = system.actorOf(Props[BadLogger],  "bad-logger")
     val messages = Vector.fill(1000000) { Log("bullshit") }
     messages foreach { good ! _ }
     messages foreach { bad  ! _ }
