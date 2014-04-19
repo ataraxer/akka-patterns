@@ -27,6 +27,8 @@ object AkkaPattersBuild extends Build {
       "com.typesafe.akka" %% "akka-kernel"  % akkaVersion,
       "com.typesafe.akka" %% "akka-testkit" % akkaVersion,
       "com.typesafe.akka" %% "akka-slf4j"   % akkaVersion,
+      "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
+      "com.typesafe.akka" %% "akka-remote"  % akkaVersion,
       // ScalaTest
       "org.scalatest"     %% "scalatest"    % scalatestVersion  % "test",
       // ZooKeeper
