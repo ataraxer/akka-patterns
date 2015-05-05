@@ -29,3 +29,12 @@ lazy val akkaCluster = (project in file("akka-cluster"))
     "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
     "com.typesafe.akka" %% "akka-slf4j" % akkaVersion))
 
+
+lazy val akkaPersistence = (project in file("akka-persistence"))
+  .settings(commonSettings: _*)
+  .settings(Revolver.settings: _*)
+  .settings(name := "akka-persistence-playground")
+  .settings(fork in Compile := true)
+  .settings(libraryDependencies ++= akka ++ Seq(
+    "com.typesafe.akka" %% "akka-persistence-experimental" % akkaVersion))
+
